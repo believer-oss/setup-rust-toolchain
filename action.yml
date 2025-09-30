@@ -32,7 +32,7 @@ inputs:
     description: "Additional non workspace directories to be cached, separated by newlines."
     required: false
   cache-on-failure:
-    description: "Also cache on workflow failures"
+    description: "Cache even if the build fails."
     default: "true"
     required: false
   cache-key:
@@ -45,6 +45,18 @@ inputs:
     description: "Determines whether to cache ${CARGO_HOME}/bin."
     required: false
     default: "true"
+  cache-provider:
+    description: "Determines which provider to use for caching. Options are github, buildjet, or warpbuild. Defaults to github."
+    required: false
+    default: "github"
+  cache-all-crates:
+    description: "Determines which crates are cached. If `true` all crates will be cached, otherwise only dependent crates will be cached."
+    required: false
+    default: "false"
+  cache-workspace-crates:
+    description: "Determines which crates are cached. If `true` all crates will be cached, otherwise only dependent crates will be cached."
+    required: false
+    default: "false"
   matcher:
     description: "Enable the Rust problem matcher"
     required: false
@@ -57,6 +69,9 @@ inputs:
     description: "Setup the last installed toolchain as the default via `rustup override`"
     required: false
     default: "true"
+  rust-src-dir:
+    description: "Specify path from root directory to the Rust source directory. By default root directory will be used."
+    required: false
 
 outputs:
   rustc-version:
@@ -130,13 +145,20 @@ runs:
       run: echo "::add-matcher::${{ github.action_path }}/rust.json"
 
     - name: Install rustup, if needed
-      if: runner.os != 'Windows'
       shell: bash
       run: |
         if ! command -v rustup &> /dev/null ; then
           curl --proto '=https' --tlsv1.2 --retry 10 --retry-connrefused -fsSL "https://sh.rustup.rs" | sh -s -- --default-toolchain none -y
-          echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
+
+          # Resolve the correct CARGO_HOME path depending on OS
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            echo "${CARGO_HOME:-$USERPROFILE/.cargo}/bin" | sed 's|/|\\|g' >> $GITHUB_PATH
+          else
+            echo "${CARGO_HOME:-$HOME/.cargo}/bin" >> $GITHUB_PATH
+          fi
         fi
+      env:
+        RUNNER_OS: "${{ runner.os }}"
 
     - name: rustup toolchain install ${{inputs.toolchain || 'stable'}}
       env:
@@ -144,9 +166,13 @@ runs:
         targets: ${{inputs.target}}
         components: ${{inputs.components}}
         override: ${{inputs.override}}
+        rust_src_dir: ${{inputs.rust-src-dir}}
       shell: bash
       run: |
-        if [[ -z "$toolchain" && ( -f "rust-toolchain" || -f "rust-toolchain.toml" ) ]]
+        if [[ -d "$rust_src_dir" ]]; then
+          cd "$rust_src_dir"
+        fi
+        if [[ -z "$toolchain" && ( -f "rust-toolchain" || -f "rust-toolchain.toml") ]]
         then
           # Install the toolchain as specified in the file
           # rustup show is the old way that implicitly installed a toolchain
@@ -201,11 +227,14 @@ runs:
 
     - name: Setup Rust Caching
       if: inputs.cache == 'true'
-      uses: believer-oss/rust-cache@f0deed1e0edfc6a9be95417288c0e1099b1eeec3
+      uses: believer-oss/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2.8.1
       with:
-        workspaces: ${{inputs.cache-workspaces}}
+        workspaces: ${{ inputs.cache-workspaces || inputs.rust-src-dir }}
         cache-directories: ${{inputs.cache-directories}}
         cache-on-failure: ${{inputs.cache-on-failure}}
         cache-bin: ${{inputs.cache-bin}}
+        cache-provider: ${{inputs.cache-provider}}
+        cache-all-crates: ${{inputs.cache-all-crates}}
+        cache-workspace-crates: ${{inputs.cache-workspace-crates}}
         key: ${{inputs.cache-key}}
         shared-key: ${{inputs.cache-shared-key}}

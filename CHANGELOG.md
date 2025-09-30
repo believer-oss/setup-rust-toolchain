@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.1] - 2025-09-23
+
+* Update `Swatinem/rust-cache` to v2.8.1
+
+## [1.15.0] - 2025-09-14
+
+* Add support for non-root source directory.
+    Accept source code and `rust-toolchain.toml` file in subdirectories of the repository.
+    Adds a new parameter `rust-src-dir` that controls the lookup for toolchain files and sets a default value for the `cache-workspace` input. (#69 by @Kubaryt)
+
+## [1.14.1] - 2025-08-28
+
+* Pin `Swatinem/rust-cache` action to a full commit SHA (#68 by @JohnTitor)
+
+## [1.14.0] - 2025-08-23
+
+* Add new parameters `cache-all-crates` and `cache-workspace-crates` that are propagated to `Swatinem/rust-cache` as `cache-all-crates` and `cache-workspace-crates`
+
+## [1.13.0] - 2025-06-16
+
+* Add new parameter `cache-provider` that is propagated to `Swatinem/rust-cache` as `cache-provider` (#65 by @mindrunner)
+
+## [1.12.0] - 2025-04-23
+
+* Add support for installing rustup on Windows (#58 by @maennchen)
+    This adds support for using Rust on the GitHub provided Windows ARM runners.
+
 ## [1.11.0] - 2025-02-24
 
 * Add new parameter `cache-bin` that is propagated to `Swatinem/rust-cache` as `cache-bin` (#51 by @enkhjile)
